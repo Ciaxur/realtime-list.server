@@ -1,0 +1,5 @@
+# Development Directories
+node_modules
+out
+.env
+.vscode

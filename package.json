@@ -1,0 +1,33 @@
+{
+  "name": "realtime-list-server",
+  "version": "0.1.0",
+  "main": "main.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node ./out/main.js",
+    "watch": "tsc --watch",
+    "nodemon": "nodemon ./out/main.js",
+    "dev": "npm run watch& npm run nodemon"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.7",
+    "@types/express": "^4.17.7",
+    "@types/helmet": "^0.0.48",
+    "@types/morgan": "^1.9.1",
+    "@types/socket.io": "^2.1.11",
+    "@typescript-eslint/eslint-plugin": "^3.7.0",
+    "@typescript-eslint/parser": "^3.7.0",
+    "eslint": "^7.5.0",
+    "nodemon": "^2.0.4",
+    "prettier-eslint": "^11.0.0",
+    "typescript": "^3.9.7"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.17.1",
+    "helmet": "^4.1.0",
+    "morgan": "^1.10.0",
+    "socket.io": "^2.3.0"
+  }
+}
