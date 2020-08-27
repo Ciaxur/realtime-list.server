@@ -4,6 +4,7 @@
   "main": "main.js",
   "scripts": {
     "build": "tsc",
+    "postinstall": "tsc",
     "start": "node ./out/main.js",
     "watch": "tsc --watch",
     "nodemon": "nodemon ./out/main.js",
