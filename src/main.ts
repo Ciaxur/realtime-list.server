@@ -96,8 +96,22 @@ io.on('connection', socket => {
     }
   });
 
-  socket.on('item-update', (item: IListSchema) => {
-    console.log('Update', item);
+  socket.on('item-update', async (item: IListSchema) => {
+    try {
+      // Verify Schema
+      ListObjectSchema.validate(item);
+    
+      // Remove the Item in the List
+      await database.ref('/list/' + item._id).update(item);
+
+      // Broadcast Update of Item to everyone
+      io.emit('update-item', item);
+    }
+
+    catch (err) {
+      console.log('Item Update Error:', err);
+      socket.emit('error', err);
+    }
   });
 
 });
