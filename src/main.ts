@@ -133,6 +133,10 @@ app.get('/list', (req, res) => {
     });
 });
 
+app.get('*', (_, res) => {
+  res.json({});
+});
+
 
 // Start the Server on ::3030
 console.log('Listening on ::3030');
