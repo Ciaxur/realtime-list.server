@@ -139,5 +139,5 @@ app.get('*', (_, res) => {
 
 
 // Start the Server on ::3030
-console.log('Listening on ::3030');
-server.listen(3030);
+console.log(`Listening on ::${process.env.PORT || '3030'}`);
+server.listen(process.env.PORT || 3030);
