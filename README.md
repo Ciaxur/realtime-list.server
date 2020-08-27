@@ -3,6 +3,8 @@
 
 ❗️ **This Project is NOT Production Ready!** ❗️
 
+The Client Application of this project is on here [GitHub Repo](https://github.com/Ciaxur/realtime-list.client).
+
 ## Build and Run 🚀
 ```sh
 # Install Dependencies
