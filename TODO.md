@@ -9,6 +9,6 @@
 ### Version 0.2.5 (Security)
 * [x] More Secure CORS Origin
 * [ ] Additional Security
-  * [ ] Request Limiter (`express-rate-limit`)
+  * [x] Request Limiter (`express-rate-limit`)
   * [ ] Express Security Best Practices (TLS, etc...)
 

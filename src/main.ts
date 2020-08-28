@@ -14,6 +14,7 @@ import IListSchema, {
 import * as cors from 'cors';
 import morgan = require('morgan');
 import helmet = require('helmet');
+import rateLimit = require('express-rate-limit');
 
 // Database Libraries
 import * as firebase from 'firebase/app';
@@ -37,12 +38,19 @@ const database = firebase.database();
 
 // Setup & Configure Express with Socket.io
 const app = express();
+
 app.use(express.json());
 app.use(cors({
   origin: process.env.CORS_ORIGIN || '*',
 }));
 app.use(helmet());
 app.use(morgan('dev'));
+app.use(rateLimit({
+  windowMs: 1 * 60 * 1000,    // 1 Minute
+  max: 60,                    // 60 Request Max
+}));
+
+
 const server = createServer(app);
 const io = SocketIO(server);
 
