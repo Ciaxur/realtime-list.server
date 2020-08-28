@@ -6,6 +6,7 @@ export default interface IListSchema {
   _id:          string;     // MongoDB Hash ID
   image?:       string;     // Base64 Image
   count:        number;     // Quantity of Item
+  color:        string;     // Color Identifier for Item
   name:         string;     // Item's Name
   description:  string;     // Item's Description Summary
 }
@@ -23,6 +24,9 @@ export const ListObjectSchema = Joi.object({
     .integer()
     .min(1)
     .max(99)
+    .required(),
+
+  color: Joi.string()
     .required(),
 
   name: Joi.string()
