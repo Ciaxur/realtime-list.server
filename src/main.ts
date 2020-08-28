@@ -38,7 +38,9 @@ const database = firebase.database();
 // Setup & Configure Express with Socket.io
 const app = express();
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || '*',
+}));
 app.use(helmet());
 app.use(morgan('dev'));
 const server = createServer(app);
