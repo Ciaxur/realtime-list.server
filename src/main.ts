@@ -76,6 +76,7 @@ io.on('connection', socket => {
 
       // Add if Valid Schema
       item['_id'] = generateHash(); // Generate Hash ID
+      item.isDeleted = false;       // Set Initial State
       await database.ref('list/' + item._id).set(item);
 
       // Broadcast new Item to everyone

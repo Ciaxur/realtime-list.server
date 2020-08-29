@@ -4,11 +4,17 @@ import * as Joi from 'joi';
 // Item Listing Interface
 export default interface IListSchema {
   _id:          string;     // MongoDB Hash ID
+
+  // Basic Information
   image?:       string;     // Base64 Image
   count:        number;     // Quantity of Item
   color:        string;     // Color Identifier for Item
   name:         string;     // Item's Name
   description:  string;     // Item's Description Summary
+
+  // Removal Tracking
+  dateDeleted:  Date;       // Date of Removal
+  isDeleted:    boolean;    // State of Removal
 }
 
 
@@ -34,4 +40,12 @@ export const ListObjectSchema = Joi.object({
   
   description: Joi.string()
     .required(),
+
+
+  // Removal Tracking Information
+  dateDeleted: Joi.date()
+    .optional(),
+  
+  isDeleted: Joi.boolean()
+    .optional(),
 })
