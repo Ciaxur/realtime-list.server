@@ -1,4 +1,4 @@
-# Real-Time Grocery List - Server
+# Real-Time List Tracking - Server
 > Communicates with Client through Sockets for "Real-Time" Data and Event Updates.
 
 ❗️ **This Project is NOT Production Ready!** ❗️
