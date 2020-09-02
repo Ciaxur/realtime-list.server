@@ -50,9 +50,18 @@ app.use(rateLimit({
   max: 60,                    // 60 Request Max
 }));
 
-
 const server = createServer(app);
 const io = SocketIO(server);
+
+// Setup Memory Cache
+import { Cache } from './Database/LocalCache';
+// Cache Initial Value and Refresh Interval
+const CACHE_REFRESH_INTERVAL = 60 * 60 * 1000;
+const cache: Cache = {
+  list: null,           // Initial Empty (Holds the List from DB)
+  lastUpdated: null,    // Last Updated Cache in ms
+};
+
 
 // Helper Function for Generating Hashes
 function generateHash() {
@@ -79,6 +88,11 @@ io.on('connection', socket => {
       item.isDeleted = false;       // Set Initial State
       await database.ref('list/' + item._id).set(item);
 
+      // Update Cache
+      if(cache.list !== null) {
+        cache.list[item._id] = item;
+      }
+
       // Broadcast new Item to everyone
       io.emit('new-item', item);
     }
@@ -96,6 +110,11 @@ io.on('connection', socket => {
     
       // Remove the Item in the List
       await database.ref('/list/' + item._id).remove();
+
+      // Update Cache
+      if(cache.list !== null) {
+        delete cache.list[item._id];
+      }
 
       // Broadcast Removal of Item to everyone
       io.emit('remove-item', item);
@@ -115,6 +134,11 @@ io.on('connection', socket => {
       // Remove the Item in the List
       await database.ref('/list/' + item._id).update(item);
 
+      // Update Cache
+      if(cache.list !== null) {
+        cache.list[item._id] = item;
+      }
+
       // Broadcast Update of Item to everyone
       io.emit('update-item', item);
     }
@@ -132,11 +156,23 @@ io.on('connection', socket => {
 // Express Routes
 /** Retrieves entire Updated List */
 app.get('/list', (req, res) => {
+  // Check Cache
+  if(cache.list !== null && (Date.now() - cache.lastUpdated) <= CACHE_REFRESH_INTERVAL) {
+    res.statusCode = 200;
+    res.json(Object.values(cache.list));
+    return;
+  }
+  
+  // Request data from DB
   database.ref('/list')
     .once('value')
     .then(snapshot => {
+      // Store in Cache
+      cache.list = (snapshot.toJSON() as any);
+      cache.lastUpdated = Date.now();
+      
       res.statusCode = 200;
-      res.json(Object.values(snapshot.toJSON()));
+      res.json(Object.values(cache.list));
     })
     .catch(err => {
       res.statusCode =  400;
