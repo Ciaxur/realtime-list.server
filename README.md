@@ -1,8 +1,6 @@
 # Real-Time List Tracking - Server
 > Communicates with Client through Sockets for "Real-Time" Data and Event Updates.
 
-❗️ **This Project is NOT Production Ready!** ❗️
-
 The Client Application of this project is on here [GitHub Repo](https://github.com/Ciaxur/realtime-list.client).
 
 ## Build and Run 🚀
