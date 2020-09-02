@@ -63,6 +63,30 @@ const cache: Cache = {
 };
 
 
+// Interval Checker
+const TRASH_REMOVE_INTERVAL = 30 * 24 * 60 * 60 * 1000;   // 30-Days
+const intervalChecker = () => {
+  // Check Cache for Trash (30 Days to Remove)
+  const dateNow = Date.now();
+  
+  // Iterate the Cached List Checking
+  if (cache.list !== null) {
+    for (const item of Object.values(cache.list)) {
+      if(item.isDeleted) {
+        const dateDeleted = Date.parse(item.dateDeleted as any);
+
+        // Prema-Delete if Trash is over 30 Days Old
+        if(dateNow - dateDeleted > TRASH_REMOVE_INTERVAL) {
+          database.ref('/list/' + item._id).remove();
+        }
+      }
+    }
+  }
+};
+setTimeout(intervalChecker, 10 * 1000);       // Start in 10 Seconds
+setInterval(intervalChecker, 60 * 60 * 1000); // Check every 1 Hour
+
+
 // Helper Function for Generating Hashes
 function generateHash() {
   const current_date = (new Date()).valueOf().toString();
