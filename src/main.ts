@@ -16,24 +16,12 @@ import morgan = require('morgan');
 import helmet = require('helmet');
 import rateLimit = require('express-rate-limit');
 
-// Database Libraries
-import * as firebase from 'firebase/app';
-import 'firebase/database';
+// Database Init
+import { FirebaseInstance } from './Database';
+const database = FirebaseInstance.getDatabase();
 
-
-// Firebase Setup
-const firebaseConfig = {
-  apiKey: process.env.apiKey,
-  authDomain: process.env.authDomain,
-  databaseURL: process.env.databaseURL,
-  projectId: process.env.projectId,
-  storageBucket: process.env.storageBucket,
-  messagingSenderId: process.env.messagingSenderId,
-  appId: process.env.appId,
-  measurementId: process.env.measurementId,
-};
-firebase.initializeApp(firebaseConfig);
-const database = firebase.database();
+// Setup in-memory Cache
+import { cache } from './Cache'
 
 
 // Setup & Configure Express with Socket.io
@@ -52,39 +40,6 @@ app.use(rateLimit({
 
 const server = createServer(app);
 const io = SocketIO(server);
-
-// Setup Memory Cache
-import { Cache } from './Database/LocalCache';
-// Cache Initial Value and Refresh Interval
-const CACHE_REFRESH_INTERVAL = 60 * 60 * 1000;
-const cache: Cache = {
-  list: null,           // Initial Empty (Holds the List from DB)
-  lastUpdated: null,    // Last Updated Cache in ms
-};
-
-
-// Interval Checker
-const TRASH_REMOVE_INTERVAL = 30 * 24 * 60 * 60 * 1000;   // 30-Days
-const intervalChecker = () => {
-  // Check Cache for Trash (30 Days to Remove)
-  const dateNow = Date.now();
-  
-  // Iterate the Cached List Checking
-  if (cache.list !== null) {
-    for (const item of Object.values(cache.list)) {
-      if(item.isDeleted) {
-        const dateDeleted = Date.parse(item.dateDeleted as any);
-
-        // Prema-Delete if Trash is over 30 Days Old
-        if(dateNow - dateDeleted > TRASH_REMOVE_INTERVAL) {
-          database.ref('/list/' + item._id).remove();
-        }
-      }
-    }
-  }
-};
-setTimeout(intervalChecker, 10 * 1000);       // Start in 10 Seconds
-setInterval(intervalChecker, 60 * 60 * 1000); // Check every 1 Hour
 
 
 // Helper Function for Generating Hashes
@@ -178,31 +133,11 @@ io.on('connection', socket => {
 
 
 // Express Routes
-/** Retrieves entire Updated List */
-app.get('/list', (req, res) => {
-  // Check Cache
-  if(cache.list !== null && (Date.now() - cache.lastUpdated) <= CACHE_REFRESH_INTERVAL) {
-    res.statusCode = 200;
-    res.json(Object.values(cache.list));
-    return;
-  }
-  
-  // Request data from DB
-  database.ref('/list')
-    .once('value')
-    .then(snapshot => {
-      // Store in Cache
-      cache.list = (snapshot.toJSON() as any);
-      cache.lastUpdated = Date.now();
-      
-      res.statusCode = 200;
-      res.json(Object.values(cache.list));
-    })
-    .catch(err => {
-      res.statusCode =  400;
-      res.json(err);
-    });
-});
+import { ItemsRoute } from './Routes';
+
+// Register Routes
+app.use('/v1', ItemsRoute);
+
 
 app.get('*', (_, res) => {
   res.json({});

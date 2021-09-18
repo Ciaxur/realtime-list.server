@@ -8,7 +8,7 @@
     "start": "node ./out/main.js",
     "watch": "tsc --watch",
     "nodemon": "nodemon ./out/main.js",
-    "dev": "npm run watch& npm run nodemon"
+    "dev": "concurrently \"npm run watch\" \"npm run nodemon\" "
   },
   "devDependencies": {
     "@types/cors": "^2.8.7",
@@ -26,6 +26,7 @@
   },
   "license": "MIT",
   "dependencies": {
+    "concurrently": "^6.2.1",
     "cors": "^2.8.5",
     "dotenv": "^8.2.0",
     "express": "^4.17.1",
