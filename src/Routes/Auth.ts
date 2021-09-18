@@ -23,7 +23,7 @@ const app = Router();
 export default app;
 
 // Generates a JWT based on Login-Creds
-app.get('/', async (req, res) => {
+app.post('/', async (req, res) => {
   // Validate Request
   const body: IAuthSchema = req.body;
   const validRes = AuthObjectSchema.validate(body);
