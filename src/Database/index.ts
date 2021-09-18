@@ -2,6 +2,9 @@
 import * as firebase from 'firebase/app';
 import 'firebase/database';
 
+// Schemas
+export * from './AuthSchema';
+export * from './ListSchema';
 
 export class FirebaseInstance {
   private static instance: FirebaseInstance = null;

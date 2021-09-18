@@ -1,14 +1,22 @@
 // Import Environment Variables
 require('dotenv').config();
-import { createHash } from 'crypto';
+import { generateHash } from './Utils';
+import * as jwt from 'jsonwebtoken';
+
+// Env Vars
+const {
+  JWT_SECRET,
+  CORS_ORIGIN,
+} = process.env;
 
 // Express & Socket.io Libraries
 import * as express from 'express';
 import * as SocketIO from 'socket.io';
 import { createServer } from 'http';
-import IListSchema, {
+import {
+  IListSchema,
   ListObjectSchema,
-} from './Database/ListSchema';
+} from './Database';
 
 // Express Add-ons
 import * as cors from 'cors';
@@ -29,7 +37,7 @@ const app = express();
 
 app.use(express.json());
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || '*',
+  origin: CORS_ORIGIN || '*',
 }));
 app.use(helmet());
 app.use(morgan('dev'));
@@ -42,15 +50,19 @@ const server = createServer(app);
 const io = SocketIO(server);
 
 
-// Helper Function for Generating Hashes
-function generateHash() {
-  const current_date = (new Date()).valueOf().toString();
-  const random = Math.random().toString();
-  return createHash('sha1').update(current_date + random).digest('hex');
-}
-
 // Listen for Socket Events
-io.on('connection', socket => {
+io.use((socket, next) => {  // Validate JWT
+  if (socket.handshake.query && socket.handshake.query.token) {
+    jwt.verify(socket.handshake.query.token, JWT_SECRET, (err: any) => {
+      if (err) return next(new Error('Authentication error'));
+      next();
+    });
+  }
+  else {
+    next(new Error('Authentication error'));
+  }
+})
+.on('connection', socket => {
   console.log('Client Connected!');
 
   socket.on('disconnect', () => {
@@ -133,10 +145,10 @@ io.on('connection', socket => {
 
 
 // Express Routes
-import { ItemsRoute } from './Routes';
+import Routes from './Routes';
 
 // Register Routes
-app.use('/v1', ItemsRoute);
+app.use('/', Routes);
 
 
 app.get('*', (_, res) => {

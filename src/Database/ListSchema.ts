@@ -2,7 +2,7 @@ import * as Joi from 'joi';
 
 
 // Item Listing Interface
-export default interface IListSchema {
+export interface IListSchema {
   _id:          string;     // MongoDB Hash ID
 
   // Basic Information
