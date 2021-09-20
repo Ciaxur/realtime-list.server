@@ -70,7 +70,12 @@ app.post('/', async (req, res) => {
   
   return res
     .status(200)
-    .cookie('tokenKey', token, { expires: new Date( tokenExpire ), secure: true, path: '/' })
+    .cookie('tokenKey', token, { 
+      expires: new Date( tokenExpire ), 
+      secure: true, 
+      sameSite: 'none',
+      path: '/',
+    })
     .json({
       message: 'Login Successful',
     });
