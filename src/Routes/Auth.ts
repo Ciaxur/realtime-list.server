@@ -63,14 +63,14 @@ app.post('/', async (req, res) => {
   }
   
   // Generate JWT
-  const tokenExpire = Math.floor(Date.now()) + (2 * 60 * 60); // 2 Hours
+  const tokenExpire = Math.floor(Date.now()) + (24 * 60 * 60 * 1000); // 24 Hours
   const token = jwt.sign(cache.users[body.email], JWT_SECRET, {
     expiresIn: tokenExpire,
   });
   
   return res
     .status(200)
-    .cookie('tokenKey', token, { expires: new Date( tokenExpire ) })
+    .cookie('tokenKey', token, { expires: new Date( tokenExpire ), secure: true, path: '/' })
     .json({
       message: 'Login Successful',
     });

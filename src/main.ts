@@ -38,6 +38,7 @@ const app = express();
 app.use(express.json());
 app.use(cors({
   origin: CORS_ORIGIN || '*',
+  credentials: true,
 }));
 app.use(helmet());
 app.use(morgan('dev'));
@@ -52,8 +53,13 @@ const io = SocketIO(server);
 
 // Listen for Socket Events
 io.use((socket, next) => {  // Validate JWT
-  if (socket.handshake.query && socket.handshake.query.token) {
-    jwt.verify(socket.handshake.query.token, JWT_SECRET, (err: any) => {
+  const cookies = socket.handshake.headers.cookie;
+  const token = cookies && cookies
+    .split('; ')
+    .reduce((prev: string, cur: string) => cur.startsWith('tokenKey') ? cur.split('=')[1] : prev, '');
+  
+  if (token) {
+    jwt.verify(token, JWT_SECRET, (err: any) => {
       if (err) return next(new Error('Authentication error'));
       next();
     });
