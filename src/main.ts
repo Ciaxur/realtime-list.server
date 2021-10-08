@@ -75,6 +75,7 @@ io.use((socket, next) => {  // Validate JWT
         authorized_conx[socket.id] = {
           tokenKey: token,
         }
+        socket.emit('authorized', true);
       }
     });
   } else {
