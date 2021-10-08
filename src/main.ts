@@ -84,7 +84,7 @@ io.use((socket, next) => {  // Validate JWT
   next();
 })
 .on('connection', socket => {
-  console.log('Client Connected!');
+  console.log(`Socket[${socket.id}]: Client Connected!`);
 
   socket.on('disconnect', () => {
     delete authorized_conx[socket.id];
