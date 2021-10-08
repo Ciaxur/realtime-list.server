@@ -76,11 +76,11 @@ io.use((socket, next) => {  // Validate JWT
           tokenKey: token,
         }
       }
-      next();
     });
   } else {
     console.log(`Socket[${socket.id}]: Invalid Token[${token}]`)
   }
+  next();
 })
 .on('connection', socket => {
   console.log('Client Connected!');
