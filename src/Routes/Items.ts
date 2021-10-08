@@ -43,27 +43,6 @@ setInterval(intervalChecker, 60 * 60 * 1000); // Check every 1 Hour
 
 /** Retrieves entire Updated List */
 app.get('/list', (req, res) => {
-  // Check JWT/Auth
-  const cookies = (req.headers.cookie || '').split('; ');
-  const token = cookies.reduce((prev, cur) => cur.startsWith('tokenKey') ? cur.split('=')[1] : prev, '');
-  let userEntry: IAuthSchema | null = null;
-
-  if (!token) {
-    return res
-      .status(401)
-      .json({
-        message: 'Unauthorized request',
-      });
-  } else {
-    try {
-      userEntry = jwt.verify(token, JWT_SECRET) as any;
-    } catch(err) {
-      return res.status(401).json({
-        message: 'Unauthorized request',
-      });
-    }
-  }
-
   // Check Cache
   if(cache.list !== null && (Date.now() - cache.lastUpdated) <= CACHE_REFRESH_INTERVAL) {
     res.statusCode = 200;

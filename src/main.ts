@@ -47,8 +47,18 @@ app.use(rateLimit({
   max: 60,                    // 60 Request Max
 }));
 
+/**
+ * Keep track of authorized sockets and their jwt
+ */
+interface IAuthorizedSocket {
+  [socketId: string]: {
+    tokenKey: string,
+  },
+}
+
 const server = createServer(app);
 const io = SocketIO(server);
+const authorized_conx: IAuthorizedSocket = {};
 
 
 // Listen for Socket Events
@@ -60,22 +70,34 @@ io.use((socket, next) => {  // Validate JWT
   
   if (token) {
     jwt.verify(token, JWT_SECRET, (err: any) => {
-      if (err) return next(new Error('Authentication error'));
+      // Store reference to verified authorized socket conx
+      if (!err) {
+        authorized_conx[socket.id] = {
+          tokenKey: token,
+        }
+      }
       next();
     });
-  }
-  else {
-    next(new Error('Authentication error'));
+  } else {
+    console.log(`Socket[${socket.id}]: Invalid Token[${token}]`)
   }
 })
 .on('connection', socket => {
   console.log('Client Connected!');
 
   socket.on('disconnect', () => {
-    console.log('Client Disconnected!');
+    delete authorized_conx[socket.id];
+    console.log(`Socket[${socket.id}]: Client Disconnected!`);
   })
 
   socket.on('item-add', async (item: IListSchema) => {
+    // Check if Authorized Socket Connection
+    if (!authorized_conx[socket.id]) {
+      io.emit('error', 'Unauthorized Socket Connection');
+      console.log(`Socket[${socket.id}]: Unauthorized item-add`);
+      return;
+    }
+    
     try {
       // Verify Schema
       ListObjectSchema.validate(item);
@@ -95,12 +117,19 @@ io.use((socket, next) => {  // Validate JWT
     }
 
     catch (err) {
-      console.log('Item Add Error:', err);
+      console.log(`Socket[${socket.id}]: Item Add Error:`, err);
       socket.emit('error', err);
     }
   });
 
   socket.on('item-del', async (item: IListSchema) => {
+    // Check if Authorized Socket Connection
+    if (!authorized_conx[socket.id]) {
+      io.emit('error', 'Unauthorized Socket Connection');
+      console.log(`Socket[${socket.id}]: Unauthorized item-del`);
+      return;
+    }
+    
     try {
       // Verify Schema
       ListObjectSchema.validate(item);
@@ -118,12 +147,19 @@ io.use((socket, next) => {  // Validate JWT
     }
 
     catch (err) {
-      console.log('Item Removal Error:', err);
+      console.log(`Socket[${socket.id}]: Item Removal Error:`, err);
       socket.emit('error', err);
     }
   });
 
   socket.on('item-update', async (item: IListSchema) => {
+    // Check if Authorized Socket Connection
+    if (!authorized_conx[socket.id]) {
+      io.emit('error', 'Unauthorized Socket Connection');
+      console.log(`Socket[${socket.id}]: Unauthorized item-update`);
+      return;
+    }
+    
     try {
       // Verify Schema
       ListObjectSchema.validate(item);
@@ -141,7 +177,7 @@ io.use((socket, next) => {  // Validate JWT
     }
 
     catch (err) {
-      console.log('Item Update Error:', err);
+      console.log(`Socket[${socket.id}]: Item Update Error:`, err);
       socket.emit('error', err);
     }
   });
