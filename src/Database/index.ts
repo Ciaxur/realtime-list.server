@@ -9,7 +9,7 @@ export * from './ListSchema';
 export class FirebaseInstance {
   private static instance: FirebaseInstance = null;
   private db: firebase.database.Database;
-  
+
   // SINGLETON
   private constructor() {
     this.init();

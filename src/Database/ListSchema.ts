@@ -25,7 +25,7 @@ export const ListObjectSchema = Joi.object({
 
   image: Joi.string()
     .optional(),
-  
+
   count: Joi.number()
     .integer()
     .min(1)
@@ -37,7 +37,7 @@ export const ListObjectSchema = Joi.object({
 
   name: Joi.string()
     .required(),
-  
+
   description: Joi.string()
     .required(),
 
@@ -45,7 +45,7 @@ export const ListObjectSchema = Joi.object({
   // Removal Tracking Information
   dateDeleted: Joi.date()
     .optional(),
-  
+
   isDeleted: Joi.boolean()
     .optional(),
 })

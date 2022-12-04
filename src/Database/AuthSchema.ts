@@ -14,11 +14,11 @@ export const AuthObjectSchema = Joi.object({
   _id: Joi.string()
     .optional()
     .default(generateHash()),
-  
+
   email: Joi.string()
     .required()
     .email(),
-  
+
   password: Joi.string()
     .required()
     .min(6)

@@ -67,7 +67,7 @@ io.use((socket, next) => {  // Validate JWT
   const token = cookies && cookies
     .split('; ')
     .reduce((prev: string, cur: string) => cur.startsWith('tokenKey') ? cur.split('=')[1] : prev, '');
-  
+
   if (token) {
     jwt.verify(token, JWT_SECRET, (err: any) => {
       // Store reference to verified authorized socket conx
@@ -98,7 +98,7 @@ io.use((socket, next) => {  // Validate JWT
       console.log(`Socket[${socket.id}]: Unauthorized item-add`);
       return;
     }
-    
+
     try {
       // Verify Schema
       ListObjectSchema.validate(item);
@@ -130,11 +130,11 @@ io.use((socket, next) => {  // Validate JWT
       console.log(`Socket[${socket.id}]: Unauthorized item-del`);
       return;
     }
-    
+
     try {
       // Verify Schema
       ListObjectSchema.validate(item);
-    
+
       // Remove the Item in the List
       await database.ref('/list/' + item._id).remove();
 
@@ -160,11 +160,11 @@ io.use((socket, next) => {  // Validate JWT
       console.log(`Socket[${socket.id}]: Unauthorized item-update`);
       return;
     }
-    
+
     try {
       // Verify Schema
       ListObjectSchema.validate(item);
-    
+
       // Remove the Item in the List
       await database.ref('/list/' + item._id).update(item);
 

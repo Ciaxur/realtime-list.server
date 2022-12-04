@@ -61,18 +61,18 @@ app.post('/', async (req, res) => {
       message: 'Invalid credentials',
     });
   }
-  
+
   // Generate JWT
   const tokenExpire = Math.floor(Date.now()) + (24 * 60 * 60 * 1000); // 24 Hours
   const token = jwt.sign(cache.users[body.email], JWT_SECRET, {
     expiresIn: tokenExpire,
   });
-  
+
   return res
     .status(200)
-    .cookie('tokenKey', token, { 
-      expires: new Date( tokenExpire ), 
-      secure: true, 
+    .cookie('tokenKey', token, {
+      expires: new Date( tokenExpire ),
+      secure: true,
       sameSite: 'none',
       path: '/',
     })
@@ -87,7 +87,7 @@ app.post('/create', async (req, res) => {
   // Check if endpoint is enabled
   if (!DEBUG_ALLOW_AUTH_CREATE)
     return res.status(403).json({});
-  
+
   // Validate Request Body
   const body: IAuthSchema & IEntryMetadata = req.body;
   const validRes = AuthObjectSchema.validate(body);
@@ -107,7 +107,7 @@ app.post('/create', async (req, res) => {
     const users = (await database
       .ref('users')
       .once('value')).toJSON();
-    
+
     if (users) {
       for (const entry of Object.values(users)) {
         if (entry.email.toLowerCase() === body.email.toLowerCase()) {
