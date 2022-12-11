@@ -20,8 +20,8 @@ import {
 
 // Express Add-ons
 import * as cors from 'cors';
+import helmet from 'helmet';
 import morgan = require('morgan');
-import helmet = require('helmet');
 import rateLimit = require('express-rate-limit');
 
 // Database Init
