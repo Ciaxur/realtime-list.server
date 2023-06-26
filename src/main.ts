@@ -3,6 +3,10 @@ require('dotenv').config();
 import { generateHash } from './Utils';
 import * as jwt from 'jsonwebtoken';
 import * as fs from 'fs';
+import {
+  parse as parseCookies,
+  serialize as serializeCookie,
+} from 'cookie';
 
 // Env Vars
 const {
@@ -16,7 +20,7 @@ const {
 
 // Express & Socket.io Libraries
 import * as express from 'express';
-import * as SocketIO from 'socket.io';
+import { Socket, Server as SocketServer } from 'socket.io';
 import { createServer } from 'https';
 import * as tls from 'tls';
 import {
@@ -40,7 +44,6 @@ import { cache } from './Cache'
 
 // Setup & Configure Express with Socket.io
 const app = express();
-
 app.use(express.json());
 app.use(cors({
   origin: CORS_ORIGIN || '*',
@@ -57,12 +60,20 @@ app.use(rateLimit({
 /**
  * Keep track of authorized sockets and their jwt
  */
-interface IAuthorizedSocket {
-  [socketId: string]: {
-    tokenKey: string,
+interface IClientCookie {
+  tokenKey?:  string,
+};
+interface IActiveSocket {
+  // Established ipv4:port(address) connection.
+  [socketRemoteAddr: string]: {
+    socketId:   string | null,
+    socket:     Socket | null,
+    tokenKey:   string | null,
+    authorized: boolean,
+    cookies:    IClientCookie,
   },
 }
-const authorized_conx: IAuthorizedSocket = {};
+const activeSocketConx: IActiveSocket = {};
 
 // Read in TLS server/client certificates.
 const serverPrivateKey = fs.readFileSync(HTTPS_SERVER_PRIVATE_KEY, 'utf8');
@@ -91,42 +102,71 @@ const server = createServer({
   // for logging purposes.
   rejectUnauthorized: false,
 },app);
-const io = SocketIO(server);
-
+const io = new SocketServer(server, {
+  cors: {
+    origin: CORS_ORIGIN || '*',
+  },
+  cookie: {
+    name: 'io',
+    httpOnly: true,
+    secure: true,
+    path: '/',
+  },
+});
 
 // Listen for Socket Events
-io.use((socket, next) => {  // Validate JWT
-  const cookies = socket.handshake.headers.cookie;
-  const token = cookies && cookies
-    .split('; ')
-    .reduce((prev: string, cur: string) => cur.startsWith('tokenKey') ? cur.split('=')[1] : prev, '');
-
-  if (token) {
-    jwt.verify(token, JWT_SECRET, (err: any) => {
-      // Store reference to verified authorized socket conx
-      if (!err) {
-        authorized_conx[socket.id] = {
-          tokenKey: token,
-        }
-        socket.emit('authorized', true);
-      }
-    });
-  } else {
-    console.log(`Socket[${socket.id}]: Invalid Token[${token}]`)
-  }
+io.use((_, next) => {
   next();
 })
 .on('connection', socket => {
-  console.log(`Socket[${socket.id}]: Client Connected!`);
+  const remoteAddr = `${socket.request.connection.remoteAddress}:${socket.request.connection.remotePort}`;
+  console.log(`Socket[${socket.id}]: Client '${remoteAddr}' Connected!`);
+
+  // Keep track of active connections.
+  let activeSocket = activeSocketConx[socket.id];
+  if (!activeSocket) {
+    activeSocketConx[socket.id] = {
+      socketId:   socket.id,
+      socket:     socket,
+      tokenKey:   null,
+      authorized: false,
+
+      // Cookies are passed in after successful handshake with client.
+      cookies:    {},
+    }
+    activeSocket = activeSocketConx[socket.id];
+  }
+
+  // Extract client token and validate.
+  const cookies: string | undefined = socket.handshake.auth.cookies;
+  if (cookies) {
+    activeSocket.cookies = parseCookies(cookies);
+    activeSocket.tokenKey = activeSocket.cookies.tokenKey || null;
+  }
+
+  if (activeSocket.tokenKey) {
+    jwt.verify(activeSocket.tokenKey, JWT_SECRET, (err: any) => {
+      // Store reference to verified authorized socket conx
+      if (!err) {
+        console.log(`Authorized connection '${socket.id}'`);
+        activeSocket.authorized = true;
+        activeSocket.socket.emit('authorized', true);
+      }
+    });
+  } else {
+    console.log(`Session[${activeSocket.socketId}]: Invalid Token[${activeSocket.tokenKey}]`)
+  }
 
   socket.on('disconnect', () => {
-    delete authorized_conx[socket.id];
-    console.log(`Socket[${socket.id}]: Client Disconnected!`);
+    delete activeSocketConx[socket.id];
+    console.log(`Socket[${socket.id}]: Client '${socket.id}' Disconnected!`);
+
+    console.log('DEBUG: Active sockets -> ', Object.keys(activeSocketConx).length);
   })
 
   socket.on('item-add', async (item: IListSchema) => {
     // Check if Authorized Socket Connection
-    if (!authorized_conx[socket.id]) {
+    if (!activeSocket.authorized) {
       io.emit('error', 'Unauthorized Socket Connection');
       console.log(`Socket[${socket.id}]: Unauthorized item-add`);
       return;
@@ -158,7 +198,7 @@ io.use((socket, next) => {  // Validate JWT
 
   socket.on('item-del', async (item: IListSchema) => {
     // Check if Authorized Socket Connection
-    if (!authorized_conx[socket.id]) {
+    if (!activeSocket.authorized) {
       io.emit('error', 'Unauthorized Socket Connection');
       console.log(`Socket[${socket.id}]: Unauthorized item-del`);
       return;
@@ -188,7 +228,7 @@ io.use((socket, next) => {  // Validate JWT
 
   socket.on('item-update', async (item: IListSchema) => {
     // Check if Authorized Socket Connection
-    if (!authorized_conx[socket.id]) {
+    if (!activeSocket.authorized) {
       io.emit('error', 'Unauthorized Socket Connection');
       console.log(`Socket[${socket.id}]: Unauthorized item-update`);
       return;
@@ -215,7 +255,6 @@ io.use((socket, next) => {  // Validate JWT
       socket.emit('error', err);
     }
   });
-
 });
 
 
