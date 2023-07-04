@@ -26,6 +26,7 @@ import {
   IItemSchema,
   ItemModel,
   ItemSchemaValdator,
+  initDatabaseWithRetry,
 } from './Database';
 
 // Express Add-ons
@@ -34,15 +35,8 @@ import helmet from 'helmet';
 import morgan = require('morgan');
 import rateLimit = require('express-rate-limit');
 
-// Database Init
-import { initDatabase } from './Database';
-initDatabase(MONGOOSE_URI)
-  .then(res => {
-    const dbName = res.connection.db.databaseName;
-    const dbEndpoint = `${res.connection.host}:${res.connection.port}`;
-    console.log(`Mongodb connection successful -> (dbName=${dbName}|host=${dbEndpoint})`);
-  })
-  .catch(err => console.log('Mongodb connection failed -> ', err));
+// Keep retrying database connection.
+initDatabaseWithRetry(MONGOOSE_URI, 2000);
 
 // Setup in-memory Cache
 import { cache } from './Cache'
