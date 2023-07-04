@@ -1,11 +1,9 @@
 // Import Environment Variables
 require('dotenv').config();
-import { generateHash } from './Utils';
 import * as jwt from 'jsonwebtoken';
 import * as fs from 'fs';
 import {
   parse as parseCookies,
-  serialize as serializeCookie,
 } from 'cookie';
 
 // Env Vars
@@ -16,6 +14,7 @@ const {
   HTTPS_SERVER_CERTIFICATE,
   HTTPS_SERVER_CA,
   HTTPS_TRUSTED_CLIENT_CA_LIST,
+  MONGOOSE_URI,
 } = process.env;
 
 // Express & Socket.io Libraries
@@ -24,8 +23,9 @@ import { Socket, Server as SocketServer } from 'socket.io';
 import { createServer } from 'https';
 import * as tls from 'tls';
 import {
-  IListSchema,
-  ListObjectSchema,
+  IItemSchema,
+  ItemModel,
+  ItemSchemaValdator,
 } from './Database';
 
 // Express Add-ons
@@ -35,8 +35,14 @@ import morgan = require('morgan');
 import rateLimit = require('express-rate-limit');
 
 // Database Init
-import { FirebaseInstance } from './Database';
-const database = FirebaseInstance.getDatabase();
+import { initDatabase } from './Database';
+initDatabase(MONGOOSE_URI)
+  .then(res => {
+    const dbName = res.connection.db.databaseName;
+    const dbEndpoint = `${res.connection.host}:${res.connection.port}`;
+    console.log(`Mongodb connection successful -> (dbName=${dbName}|host=${dbEndpoint})`);
+  })
+  .catch(err => console.log('Mongodb connection failed -> ', err));
 
 // Setup in-memory Cache
 import { cache } from './Cache'
@@ -164,7 +170,7 @@ io.use((_, next) => {
     console.log('DEBUG: Active sockets -> ', Object.keys(activeSocketConx).length);
   })
 
-  socket.on('item-add', async (item: IListSchema) => {
+  socket.on('item-add', async (item: IItemSchema) => {
     // Check if Authorized Socket Connection
     if (!activeSocket.authorized) {
       io.emit('error', 'Unauthorized Socket Connection');
@@ -174,12 +180,10 @@ io.use((_, next) => {
 
     try {
       // Verify Schema
-      ListObjectSchema.validate(item);
+      ItemSchemaValdator.validate(item);
 
       // Add if Valid Schema
-      item['_id'] = generateHash(); // Generate Hash ID
-      item.isDeleted = false;       // Set Initial State
-      await database.ref('list/' + item._id).set(item);
+      await ItemModel.create(item)
 
       // Update Cache
       if(cache.list !== null) {
@@ -188,15 +192,19 @@ io.use((_, next) => {
 
       // Broadcast new Item to everyone
       io.emit('new-item', item);
+      console.log(`New item added by '${remoteAddr}|${socket.id}' -> ${item.name}`);
     }
 
     catch (err) {
       console.log(`Socket[${socket.id}]: Item Add Error:`, err);
-      socket.emit('error', err);
+
+      // TODO: RTL-23: Clean up returned error.
+      // socket.emit('error', err);
+      socket.emit('error', { message: 'UPDATE ME' })
     }
   });
 
-  socket.on('item-del', async (item: IListSchema) => {
+  socket.on('item-del', async (item: IItemSchema) => {
     // Check if Authorized Socket Connection
     if (!activeSocket.authorized) {
       io.emit('error', 'Unauthorized Socket Connection');
@@ -206,10 +214,12 @@ io.use((_, next) => {
 
     try {
       // Verify Schema
-      ListObjectSchema.validate(item);
+      ItemSchemaValdator.validate(item);
 
       // Remove the Item in the List
-      await database.ref('/list/' + item._id).remove();
+      await ItemModel.deleteOne({
+        _id: item._id,
+      })
 
       // Update Cache
       if(cache.list !== null) {
@@ -218,15 +228,18 @@ io.use((_, next) => {
 
       // Broadcast Removal of Item to everyone
       io.emit('remove-item', item);
+      console.log(`Item deleted by '${remoteAddr}|${socket.id}' -> ${item.name}`);
     }
 
     catch (err) {
       console.log(`Socket[${socket.id}]: Item Removal Error:`, err);
-      socket.emit('error', err);
+      // TODO: RTL-23: Clean up returned error.
+      // socket.emit('error', err);
+      socket.emit('error', { message: 'UPDATE ME' })
     }
   });
 
-  socket.on('item-update', async (item: IListSchema) => {
+  socket.on('item-update', async (item: IItemSchema) => {
     // Check if Authorized Socket Connection
     if (!activeSocket.authorized) {
       io.emit('error', 'Unauthorized Socket Connection');
@@ -236,10 +249,12 @@ io.use((_, next) => {
 
     try {
       // Verify Schema
-      ListObjectSchema.validate(item);
+      ItemSchemaValdator.validate(item);
 
       // Remove the Item in the List
-      await database.ref('/list/' + item._id).update(item);
+      await ItemModel.updateOne({
+        _id: item._id
+      }, item);
 
       // Update Cache
       if(cache.list !== null) {
@@ -248,11 +263,14 @@ io.use((_, next) => {
 
       // Broadcast Update of Item to everyone
       io.emit('update-item', item);
+      console.log(`Item updated by '${remoteAddr}|${socket.id}' -> ${item.name}`);
     }
 
     catch (err) {
       console.log(`Socket[${socket.id}]: Item Update Error:`, err);
-      socket.emit('error', err);
+      // TODO: RTL-23: Clean up returned error.
+      // socket.emit('error', err);
+      socket.emit('error', { message: 'UPDATE ME' })
     }
   });
 });

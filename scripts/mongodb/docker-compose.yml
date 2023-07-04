@@ -1,0 +1,15 @@
+# This is intended to be an example mongodb environment. !! Make sure to change the credentials!
+version: '3'
+services:
+  database:
+    image: 'mongo'
+    container_name: 'mongodb'
+      #    network_mode: 'host'
+    environment:
+      - MONGO_INITDB_DATABASE=rtl
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=w6qNkO2nsoHu
+    volumes:
+      - ./mongo-volume:/data/db
+    ports:
+      - '27017-27019:27017-27019'

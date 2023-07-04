@@ -1,53 +1,17 @@
 // Database Libraries
-import * as firebase from 'firebase/app';
-import 'firebase/database';
+import mongoose from 'mongoose';
 
 // Schemas
-export * from './AuthSchema';
-export * from './ListSchema';
+export * from './User.model';
+export * from './Item.model';
 
-export class FirebaseInstance {
-  private static instance: FirebaseInstance = null;
-  private db: firebase.database.Database;
-
-  // SINGLETON
-  private constructor() {
-    this.init();
-  }
-
-  // CREATE/INIT
-  private init() {
-    const firebaseConfig = {
-      apiKey: process.env.apiKey,
-      authDomain: process.env.authDomain,
-      databaseURL: process.env.databaseURL,
-      projectId: process.env.projectId,
-      storageBucket: process.env.storageBucket,
-      messagingSenderId: process.env.messagingSenderId,
-      appId: process.env.appId,
-      measurementId: process.env.measurementId,
-    };
-    firebase.initializeApp(firebaseConfig);
-    this.db = firebase.database();
-  }
-
-  /**
-   * Creates a Firebase Singleton Instance
-   * @returns Firebase Instance
-   */
-  public static createDatabase(): FirebaseInstance {
-    if (this.instance === null) {
-      this.instance = new FirebaseInstance();
-    }
-    return this.instance;
-  }
-
-  /**
-   * Returns the only database object, creating one if no instance
-   *  is created yet
-   */
-  public static getDatabase(): firebase.database.Database {
-    const instance = this.createDatabase();
-    return instance.db;
-  }
+/**
+ * Initialize a connection to the mongoose database.
+ * @param uri The connection URI to the mongoose database.
+ * @returns Mongoose instance wrapped in a promise.
+ */
+export function initDatabase(uri: string): Promise<typeof mongoose> {
+  return mongoose.connect(uri, {
+    dbName: 'rtl',
+  });
 }

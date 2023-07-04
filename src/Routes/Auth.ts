@@ -1,14 +1,16 @@
 import { Router } from 'express';
-import { IAuthSchema, AuthObjectSchema } from '../Database';
+import {
+  IUserSchema,
+  UserSchemaValidator,
+  UserModel,
+} from '../Database';
 import { cache } from '../Cache';
 import * as bcrypt from 'bcrypt';
 import * as jwt from 'jsonwebtoken';
 
 // Database Setup
-import { FirebaseInstance } from '../Database';
 import { generateHash } from '../Utils';
 import { IEntryMetadata } from '../Interfaces/Common';
-const database = FirebaseInstance.getDatabase();
 
 // Allow Creation (Debug Only)
 const DEBUG_ALLOW_AUTH_CREATE = false;
@@ -22,11 +24,13 @@ const {
 const app = Router();
 export default app;
 
+// TODO: Once there's an update endpoint, make sure the cache is updated too.
+
 // Generates a JWT based on Login-Creds
 app.post('/', async (req, res) => {
   // Validate Request
-  const body: IAuthSchema = req.body;
-  const validRes = AuthObjectSchema.validate(body);
+  const body: IUserSchema = req.body;
+  const validRes = UserSchemaValidator.validate(body);
   if (validRes.error) {
     return res.status(400).json({
       error: validRes.error.details
@@ -40,21 +44,14 @@ app.post('/', async (req, res) => {
     paswdVerified = await bcrypt.compare(body.password, cache.users[body.email].password);
   }
   else {
-    // Check db and update Cache
-    const users = (await database
-      .ref('users')
-      .once('value')).toJSON();
+    // Check db.
+    const user = (await UserModel.findOne({
+      email: body.email.toLowerCase(),
+    })).toJSON();
 
-
-    if (users) {
-      for (const entry of Object.values(users)) {
-        if (entry.email.toLowerCase() === body.email.toLowerCase()) {
-          cache.users[body.email] = entry;
-          paswdVerified = await bcrypt.compare(body.password, cache.users[body.email].password);
-          break;
-        }
-      }
-    }
+    // Update cache.
+    cache.users[body.email] = user;
+    paswdVerified = await bcrypt.compare(body.password, cache.users[body.email].password);
   }
   if (!paswdVerified) {
     return res.status(401).json({
@@ -89,8 +86,8 @@ app.post('/create', async (req, res) => {
     return res.status(403).json({});
 
   // Validate Request Body
-  const body: IAuthSchema & IEntryMetadata = req.body;
-  const validRes = AuthObjectSchema.validate(body);
+  const body: IUserSchema & IEntryMetadata = req.body;
+  const validRes = UserSchemaValidator.validate(body);
   if (validRes.error) {
     return res.status(400).json({
       error: validRes.error.details
@@ -103,26 +100,20 @@ app.post('/create', async (req, res) => {
   if (cache.users[body.email]) {
     dupFound = true;
   } else {
-    // Check db and update Cache
-    const users = (await database
-      .ref('users')
-      .once('value')).toJSON();
+    // Check db.
+    const user = (await UserModel.findOne({ email: body.email.toLowerCase() })).toJSON();
 
-    if (users) {
-      for (const entry of Object.values(users)) {
-        if (entry.email.toLowerCase() === body.email.toLowerCase()) {
-          cache.users[body.email] = entry;
-          dupFound = true;
-          break;
-        }
-      }
+    // Check if the user already exists and update cache to minimize reads from DB.
+    if (user) {
+      dupFound = true;
+      cache.users[body.email] = user;
     }
   }
   if (dupFound) {
     return res
       .status(409)
       .json({
-        message: 'Email address already found',
+        message: 'User already exists',
       });
   }
 
@@ -133,13 +124,11 @@ app.post('/create', async (req, res) => {
   // Add Account Metadata
   body._id = generateHash();
   body.password = hashedPaswd;
-  body.createdAt = Date.now();
-  body.modifiedAt = Date.now();
 
   // Add Account to DB
-  return database.ref('users/' + body._id).set(body)
+  return UserModel.create(body)
     .then(() => res.status(200).json({
-      message: `Account ${body._id} added successfuly`,
+      message: `Account ${body._id} created successfuly`,
     }))
     .catch(err => res.status(400).json({
       message: 'Account creation error',

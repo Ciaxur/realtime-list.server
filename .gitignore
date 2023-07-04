@@ -3,3 +3,7 @@ node_modules
 out
 .env
 .vscode
+scripts/mongodb/mongo-volume
+*.crt
+*.pem
+*.key

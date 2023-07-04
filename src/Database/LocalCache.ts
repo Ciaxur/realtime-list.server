@@ -1,15 +1,17 @@
-import { IListSchema} from "./ListSchema";
-import { IAuthSchema } from '../Database';
+import {
+  IItemSchema,
+  IUserSchema,
+} from '../Database';
 
 
 // ListSchema Key Value Pair
-export interface IListSchemaPair {
-  [id: string]: IListSchema,
+export interface IItemSchemaPair {
+  [id: string]: IItemSchema,
 }
 
 // Cache Iterface
 export interface Cache {
-  list: IListSchemaPair | null,
+  list: IItemSchemaPair | null,
   lastUpdated: number | null,
-  users: { [email: string]: IAuthSchema},
+  users: { [email: string]: IUserSchema},
 }
