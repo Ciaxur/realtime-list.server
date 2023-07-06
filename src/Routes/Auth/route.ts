@@ -3,17 +3,15 @@ import {
   IUserSchema,
   UserSchemaValidator,
   UserModel,
-} from '../Database';
-import { cache } from '../Cache';
+} from '../../Database';
+import { cache } from '../../Cache';
 import * as bcrypt from 'bcrypt';
 import * as jwt from 'jsonwebtoken';
 
 // Database Setup
-import { generateHash } from '../Utils';
-import { IEntryMetadata } from '../Interfaces/Common';
-
-// Allow Creation (Debug Only)
-const DEBUG_ALLOW_AUTH_CREATE = false;
+import { IEntryMetadata } from '../../Interfaces/Common';
+import { activeSocketConx } from '../../Websocket/handlers';
+import { revokedTokens } from './tracking';
 
 // Environment Vars
 const {
@@ -23,6 +21,7 @@ const {
 
 const app = Router();
 export default app;
+
 
 // TODO: Once there's an update endpoint, make sure the cache is updated too.
 
@@ -45,13 +44,16 @@ app.post('/', async (req, res) => {
   }
   else {
     // Check db.
-    const user = (await UserModel.findOne({
+    const user = await UserModel.findOne({
       email: body.email.toLowerCase(),
-    })).toJSON();
+    });
 
-    // Update cache.
-    cache.users[body.email] = user;
-    paswdVerified = await bcrypt.compare(body.password, cache.users[body.email].password);
+    // Ensure the user was found.
+    if (user) {
+      // Update cache and verify credentials.
+      cache.users[body.email] = user.toJSON();
+      paswdVerified = await bcrypt.compare(body.password, cache.users[body.email].password);
+    }
   }
   if (!paswdVerified) {
     return res.status(401).json({
@@ -78,13 +80,7 @@ app.post('/', async (req, res) => {
     });
 });
 
-
-// DEBUG: Only enable for time of creation
 app.post('/create', async (req, res) => {
-  // Check if endpoint is enabled
-  if (!DEBUG_ALLOW_AUTH_CREATE)
-    return res.status(403).json({});
-
   // Validate Request Body
   const body: IUserSchema & IEntryMetadata = req.body;
   const validRes = UserSchemaValidator.validate(body);
@@ -101,12 +97,12 @@ app.post('/create', async (req, res) => {
     dupFound = true;
   } else {
     // Check db.
-    const user = (await UserModel.findOne({ email: body.email.toLowerCase() })).toJSON();
+    const user = await UserModel.findOne({ email: body.email.toLowerCase() });
 
     // Check if the user already exists and update cache to minimize reads from DB.
     if (user) {
       dupFound = true;
-      cache.users[body.email] = user;
+      cache.users[body.email] = user.toJSON();
     }
   }
   if (dupFound) {
@@ -122,16 +118,55 @@ app.post('/create', async (req, res) => {
   const hashedPaswd = await bcrypt.hash(body.password, salt);
 
   // Add Account Metadata
-  body._id = generateHash();
   body.password = hashedPaswd;
 
   // Add Account to DB
   return UserModel.create(body)
-    .then(() => res.status(200).json({
-      message: `Account ${body._id} created successfuly`,
-    }))
+    .then((newUser) => {
+      console.log(`Account created -> ${newUser.email} | ${newUser._id}`);
+      return res.status(200).json({
+        message: `Account ${newUser.email} created successfuly`,
+      });
+    })
     .catch(err => res.status(400).json({
       message: 'Account creation error',
       error: err,
     }));
+});
+
+app.post('/logoff', async (req, res) => {
+  // Remove logged in token.
+  const token = req.cookies.tokenKey;
+
+  if (token && !revokedTokens.has(token)) {
+    for (const activeSockVal of Object.values(activeSocketConx)) {
+      if (activeSockVal.tokenKey == token) {
+        activeSockVal.authorized = false;
+      }
+    }
+
+    // Revoke token.
+    revokedTokens.add(token);
+
+    // Set a timeout to remove the token based on the TTL.
+    const decodedToken = jwt.decode(token, {
+      json: true
+    });
+    const expiresIn = decodedToken.exp - Date.now();
+
+    if (expiresIn > 0) {
+      console.log(`DEBUG: Setting token revocation for the removal of ${token} in ${expiresIn}ms`);
+      setTimeout(() => {
+        revokedTokens.delete(token);
+      }, expiresIn);
+    }
+
+    res.clearCookie('tokenKey');
+
+    return res
+      .status(200)
+      .json({});
+  }
+
+  return res.status(200).json({});
 });
